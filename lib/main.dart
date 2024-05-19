@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
 void main() {
   runApp(const MyApp());
@@ -61,16 +61,6 @@ class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
   final String _imageUrl = 'https://firebasestorage.googleapis.com/v0/b/test-extract-text-ia.appspot.com/o/Modern%20Restaurant%20Bill.jpg?alt=media&token=59e5af32-d3f2-4c7b-88af-6141834caf60';
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +94,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => const DetailPage()));
+          Navigator.push(context, MaterialPageRoute(builder: (context) =>  DetailPage()));
         },
         tooltip: 'Increment',
         child: const Icon(Icons.add),
@@ -113,36 +103,107 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-class DetailPage extends StatelessWidget {
-  const DetailPage({super.key});
+class DetailPage extends StatefulWidget {
+   DetailPage({super.key});
 
-  Future<Map<String, dynamic>> analyseImageHttp() async {
-    Map<String, String> body = {"imageUrl": "https://firebasestorage.googleapis.com/v0/b/test-extract-text-ia.appspot.com/o/Modern%20Restaurant%20Bill.jpg?alt=media&token=59e5af32-d3f2-4c7b-88af-6141834caf60"};
-    final res = await http.post(Uri.parse('http://127.0.0.1:5005/test-extract-text-ia/us-central1/analyzeImageHttp'), body: body);
-    Map<String, dynamic> body1 = jsonDecode(res.body);
-    return body1;
-  }
+  @override
+  State<DetailPage> createState() => _DetailPageState();
+}
 
-  Future<Map<String, dynamic>?> labelProduct(var rows) async {
-    try {
-      Map<String, dynamic> body = {
-        "rows": [
-          {"Items": "Apple normal", "Quantity": "5 KG", "Price per Unit": "Rs . 100.00", "Tax per Unit": "Rs . 5.00 ( 5 % )", "Amount": "Rs . 525.00"},
-          {"Items": "Orange", "Quantity": "10 KG", "Price per Unit": "Rs . 40.00", "Tax per Unit": "Rs . 2.00 ( 5 % )", "Amount": "Rs . 420.00"},
-          {"Items": "Banana", "Quantity": "5 KG", "Price per Unit": "Rs . 40", "Tax per Unit": "Rs . 2.00 ( 5 % )", "Amount": "Rs.210.00"}
-        ]
-      };
-      var res = await http.post(Uri.parse('http://127.0.0.1:5005/test-extract-text-ia/us-central1/extractProducts'), body: jsonDecode(jsonEncode(body)));
-      print(res.body.runtimeType);
-      Map<String, dynamic> body1 = jsonDecode(res.body);
+class _DetailPageState extends State<DetailPage> {
+  final dio = Dio();
 
-      return body1;
-    } catch (e) {
-      print('Error from labelProduct');
-      print(e);
-      return null;
+
+  Future<AnalyseImageResponse> analyseImageHttp() async {
+
+    Response response;
+
+    response = await dio.post('http://127.0.0.1:5005/test-extract-text-ia/us-central1/analyzeImageHttp', data: {"imageUrl": "https://firebasestorage.googleapis.com/v0/b/test-extract-text-ia.appspot.com/o/Modern%20Restaurant%20Bill.jpg?alt=media&token=59e5af32-d3f2-4c7b-88af-6141834caf60"}, options: Options(contentType: Headers.jsonContentType, responseType: ResponseType.json),onSendProgress: (i, j){
+      print(i);
+      print(j);
+
+    }, onReceiveProgress: (i, j){
+      print(i);
+      print(j);
+    });
+    var body1 = response.data;
+
+    print(body1.runtimeType);
+    List<dynamic> data = body1['data'];
+    print(data.runtimeType);
+    print(data);
+    List<Map<String, dynamic>> datas = [];
+    for (var i in data) {
+      Map<String, dynamic> map = {};
+      print(i["Items"]);
+      map["Items"] = i["Items"];
+      map["Quantity"] = i["Quantity"];
+      map["Price per Unit"] = i["Price per Unit"];
+      map["Tax per Unit"] = i["Tax per Unit"];
+      map["Amount"] = i["Amount"];
+      datas.add(map);
     }
+    print(datas);
+    return AnalyseImageResponse.fromJson({
+      "image": body1['image'],
+      "data": datas,
+    });
   }
+
+   Future<Map<String, List<String>>> extractProducts(List<Map<String, dynamic>> body) async {
+    print('extractProducts');
+    print(body);
+     /* Map<String, String> body = {"imageUrl": "https://firebasestorage.googleapis.com/v0/b/test-extract-text-ia.appspot.com/o/Modern%20Restaurant%20Bill.jpg?alt=media&token=59e5af32-d3f2-4c7b-88af-6141834caf60"};
+    final res = await http.post(Uri.parse('http://127.0.0.1:5005/test-extract-text-ia/us-central1/analyzeImageHttp'), body: body);
+    print(res.body.runtimeType);
+
+    Map<String, dynamic> body1 = jsonDecode(res.body);*/
+     Response response;
+
+
+     response = await dio.post('http://127.0.0.1:5005/test-extract-text-ia/us-central1/extractProducts', data: {"datas":body}, options: Options(contentType: Headers.jsonContentType, responseType: ResponseType.json),onSendProgress: (i, j){
+        print(i);
+        print(j);
+     }, onReceiveProgress: (i, j){
+       print(i);
+       print(j);
+     });
+     var body1 = jsonDecode(response.data);
+    Map<String, List<String>> data = {};
+
+
+     print(body1.runtimeType);
+     print(body1);
+
+     body1.forEach(( key, value) {
+       print(key);
+       print(key.runtimeType);
+        print(value);
+        print(value.runtimeType);
+        data[key] = [];
+        for (var i in value) {
+          data[key]?.add(i);
+        }
+     });
+
+     print(data);
+
+
+
+     /*for (var i in data) {
+       Map<String, dynamic> map = {};
+       print(i["Items"]);
+       map["items"] = i["Items"];
+       map["quantity"] = i["Quantity"];
+       map["price_per_unit"] = i["Price per Unit"];
+       map["tax_per_unit"] = i["Tax per Unit"];
+       map["amount"] = i["Amount"];
+       datas.add(map);
+     }*/
+     return data;
+   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +212,7 @@ class DetailPage extends StatelessWidget {
         title: const Text('Detail Page'),
       ),
       body: Container(
-        child: FutureBuilder<Map<String, dynamic>>(
+        child:FutureBuilder<AnalyseImageResponse>(
           future: analyseImageHttp(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.done) {
@@ -160,13 +221,14 @@ class DetailPage extends StatelessWidget {
                 print(snapshot.error);
                 return Text('Error: ${snapshot.error}');
               } else {
-                String encodedBase64Img = snapshot.data!['image'];
-                List<Map<String, dynamic>> data1 = [];
-                for (var i in snapshot.data!['data']) {
-                  data1.add(jsonDecode(jsonEncode(i)));
+                if(!snapshot.hasData) {
+                  return const Text('No data');
                 }
-                print(data1.runtimeType);
-                print(data1);
+                AnalyseImageResponse data = snapshot.data!;
+                String encodedBase64Img = data.image;
+                var data1 = data.data;
+                // List<dynamic> to List<Map<String, dynamic>>
+
 
                 return SingleChildScrollView(
                   child: Column(
@@ -182,7 +244,7 @@ class DetailPage extends StatelessWidget {
                         },
                       ),
                       FutureBuilder(
-                        future: labelProduct([]),
+                        future: extractProducts(data1),
                         builder: (context, snapshot1) {
                           if (snapshot1.connectionState == ConnectionState.done) {
                             if (snapshot1.hasError) {
@@ -190,9 +252,33 @@ class DetailPage extends StatelessWidget {
                               print(snapshot1.error);
                               return Text('Error: ${snapshot1.error}');
                             } else {
-                              return Column(
-                                children: [],
+                              if(!snapshot1.hasData) {
+                                return const Text('No data 1');
+                              }
+                              return ListView.builder(
+                                shrinkWrap: true,
+                                itemCount: snapshot1.data!.length,
+                                itemBuilder: (context, index) {
+                                  return ListTile(
+
+                                    title: Text(snapshot1.data!.keys.elementAt(index)),
+                                    subtitle: ListView.builder(
+                                      shrinkWrap: true,
+                                      itemCount: snapshot1.data!.values.elementAt(index).length,
+                                      itemBuilder: (context, index1) {
+                                        return Card(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(0),
+                                          ),
+
+                                          child:Container(child: Text(snapshot1.data!.values.elementAt(index)[index1]), padding: const EdgeInsets.all(16), color: Theme.of(context).colorScheme.surface,  margin: const EdgeInsets.all(8), ),
+                                        );
+                                      },
+                                    ),
+                                  );
+                                },
                               );
+
                             }
                           } else {
                             return const CircularProgressIndicator();
@@ -203,12 +289,46 @@ class DetailPage extends StatelessWidget {
                   ),
                 );
               }
-            } else {
-              return const CircularProgressIndicator();
+            } else if (snapshot.connectionState == ConnectionState.waiting) {
+              return  Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Loading...'),
+                  ],
+                ),
+              );
+            }
+
+            else {
+              return Container();
             }
           },
         ),
       ),
     );
+  }
+}
+
+class AnalyseImageResponse {
+  final String image;
+  final List<Map<String, dynamic>> data;
+
+  AnalyseImageResponse({required this.image, required this.data});
+
+  factory AnalyseImageResponse.fromJson(Map<String, dynamic> json) {
+    return AnalyseImageResponse(
+      image: json['image'],
+      data: json['data'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      "image": image,
+      "data": data,
+    };
   }
 }
